@@ -92,12 +92,7 @@
             
         }
 
-        .diagonal-button.circular {
-            background-color: #00d2ff;
-            background-image: linear-gradient(145deg, #00d2ff, #0077ff);
-            clip-path: circle(50%);
-        }
-
+        
         .diagonal-button.hexagonal {
             background-color: #3498db;
             background-image: linear-gradient(145deg, #3498db, #0066cc);
@@ -254,26 +249,34 @@
             let timeList = document.getElementById('time-list');
             timeList.innerHTML = '';
             let now = new Date();
+            let foundFuture = false;
 
-            let futureTimes = times
-                .map(time => {
-                    let [hours, minutes] = time.split(':').map(Number);
-                    let timbreTime = new Date();
-                    timbreTime.setHours(hours, minutes, 0, 0);
-                    return timbreTime > now ? timbreTime : null;
-                })
-                .filter(time => time !== null);
+            times.forEach(time => {
+                let [hours, minutes] = time.split(':').map(Number);
+                let timbreTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
 
-            if (futureTimes.length > 0) {
-                nextTimbreTime = futureTimes[0];
-            }
+                if (timbreTime > now && !foundFuture) {
+                    nextTimbreTime = timbreTime;
+                    foundFuture = true;
+                } else if (timbreTime <= now) {
+                    timbreTime.setDate(timbreTime.getDate() + 1);
+                }
 
-            futureTimes.forEach(timbreTime => {
                 let listItem = document.createElement('p');
-                listItem.innerText = `${timbreTime.getHours()}:${String(timbreTime.getMinutes()).padStart(2, '0')}`;
+                listItem.innerText = time;
                 timeList.appendChild(listItem);
+
+                scheduleIntervals.push(setInterval(() => {
+                    if (new Date() >= timbreTime) {
+                        playTimbre();
+                        timbreTime.setDate(timbreTime.getDate() + 1);
+                    }
+                }, 1000));
             });
 
+            if (!foundFuture) {
+                nextTimbreTime = null;
+            }
             startCountdown();
         }
 
@@ -281,53 +284,34 @@
             document.getElementById('timbre-sound').play();
         }
 
-        function startCountdown() {
-            timerId = setInterval(updateCountdown, 1000);
+        function clearIntervals() {
+            scheduleIntervals.forEach(clearInterval);
+            scheduleIntervals = [];
         }
 
-        function clearIntervals() {
-            clearInterval(timerId);
+        function startCountdown() {
+            updateCountdown();
+            timerId = setInterval(updateCountdown, 1000);
         }
 
         function updateCountdown() {
             if (nextTimbreTime) {
                 let now = new Date();
-                let timeDiff = nextTimbreTime - now;
-
-                if (timeDiff <= 0) {
-                    clearInterval(timerId);
-                    document.getElementById('next-timbre').innerText = "¡Es hora del timbre!";
-                    playTimbre();
-
-                    let timetable = document.querySelectorAll("#time-list p");
-                    if (timetable.length > 0) {
-                        let nextIndex = Array.from(timetable).findIndex(p => p.innerText === `${nextTimbreTime.getHours()}:${String(nextTimbreTime.getMinutes()).padStart(2, '0')}`) + 1;
-                        if (nextIndex < timetable.length) {
-                            let [hours, minutes] = timetable[nextIndex].innerText.split(':').map(Number);
-                            nextTimbreTime = new Date();
-                            nextTimbreTime.setHours(hours, minutes, 0, 0);
-                            startCountdown();
-                        } else {
-                            nextTimbreTime = null;
-                        }
-                    }
-                } else {
-                    let seconds = Math.floor((timeDiff / 1000) % 60);
-                    let minutes = Math.floor((timeDiff / 1000 / 60) % 60);
-                    let hours = Math.floor((timeDiff / (1000 * 60 * 60)) % 24);
-                    document.getElementById('next-timbre').innerText = `Siguiente Timbre: ${hours}h ${minutes}m ${seconds}s`;
-                }
+                let timeDiff = Math.max(0, nextTimbreTime - now);
+                let hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                let minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
+                let seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
+                document.getElementById('next-timbre').innerText = `Siguiente en: ${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            } else {
+                document.getElementById('next-timbre').innerText = "Siguiente en: --:--";
             }
         }
 
-        function startClock() {
-            setInterval(() => {
-                const now = new Date();
-                document.getElementById('digital-clock').innerText = now.toLocaleTimeString();
-            }, 1000);
-        }
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('digital-clock').innerText = now.toLocaleTimeString();
+        }, 1000);
 
-        startClock();
     </script>
 
 </body>
