@@ -45,8 +45,6 @@
             color: #85e7fd;
             text-align: center;
             font-family: Verdana, Geneva, sans-serif;
-
-            
         }
 
         .next-timbre {
@@ -104,15 +102,12 @@
             transition: all 0.3s ease;
             box-shadow: rgba(255, 255, 255, 0.621), inset 0 4px 4px rgba(255, 255, 255, 0.2);
             transition: transform 0.5s ease; 
-            
         }
 
-        
         .diagonal-button.hexagonal {
             background-color: #3498db;
             background-image: linear-gradient(145deg, #3498db, #0066cc);
             clip-path: polygon(50% 0%, 90% 25%, 90% 75%, 50% 100%, 10% 75%, 10% 25%);
-            
         }
 
         .diagonal-button:hover {
@@ -202,7 +197,7 @@
         </section>
 
         <article id="timetable">
-            <h3>Horas a las que sonará el timbre</h3>
+            <h3>Horas a las que sonara el timbre</h3>
             <div id="time-list"></div>
         </article>
 
@@ -226,108 +221,90 @@
             clearIntervals();
             document.getElementById('timetable').style.display = 'block';
             switch (scheduleNumber) {
-                case 1:
-                    setHorario1();
-                    break;
-                case 2:
-                    setHorario2();
-                    break;
-                case 3:
-                    setHorario3();
-                    break;
-                case 4:
-                    setHorario4();
-                    break;
+                case 1:setHorario1();break;
+                case 2:setHorario2();break;
+                case 3:setHorario3();break;
+                case 4:setHorario4();break;
             }
         }
 
-        function setHorario1() {
-            let times = ['12:45', '13:30', '14:15', '15:00', '15:45', '16:30', '17:15'];
-            updateTimetable(times);
-        }
-
-        function setHorario2() {
-            let times = ['13:00', '13:55', '14:50', '15:45', '16:40', '17:35'];
-            updateTimetable(times);
-        }
-
-        function setHorario3() {
-            let times = ['12:15', '13:00', '13:45', '14:30', '15:15', '16:00'];
-            updateTimetable(times);
-        }
-
-        function setHorario4() {
-            let times = ['13:15', '14:00', '14:45', '15:30', '16:15', '17:00'];
-            updateTimetable(times);
-        }
+        function setHorario1() { updateTimetable(['12:15', '13:30', '14:15', '15:00', '15:45', '16:30', '17:15']); }
+        function setHorario2() { updateTimetable(['13:00', '13:55', '14:50', '15:45', '16:40', '17:35',]); }
+        function setHorario3() { updateTimetable(['12:15', '13:00', '13:45', '14:30', '15:15', '16:00']); }
+        function setHorario4() { updateTimetable(['13:15', '14:00', '14:45', '15:30', '16:15', '17:00']); }
 
         function updateTimetable(times) {
             let timeList = document.getElementById('time-list');
             timeList.innerHTML = '';
-            let now = new Date();
-            let foundFuture = false;
-
+            scheduleIntervals = times;
             times.forEach(time => {
-                let [hours, minutes] = time.split(':').map(Number);
-                let timbreTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
-
-                if (timbreTime > now && !foundFuture) {
-                    nextTimbreTime = timbreTime;
-                    foundFuture = true;
-                } else if (timbreTime <= now) {
-                    timbreTime.setDate(timbreTime.getDate() + 1);
-                }
-
-                let listItem = document.createElement('p');
-                listItem.innerText = time;
-                timeList.appendChild(listItem);
-
-                scheduleIntervals.push(setInterval(() => {
-                    if (new Date() >= timbreTime) {
-                        playTimbre();
-                        timbreTime.setDate(timbreTime.getDate() + 1);
-                    }
-                }, 1000));
+                let p = document.createElement('p');
+                p.textContent = time;
+                timeList.appendChild(p);
             });
-
-            if (!foundFuture) {
-                nextTimbreTime = null;
-            }
-            startCountdown();
+            updateNextTimbre();
         }
 
         function playTimbre() {
             document.getElementById('timbre-sound').play();
+            updateNextTimbre(); // Modificación: recalcular el siguiente timbre después de sonar
         }
 
-        function clearIntervals() {
-            scheduleIntervals.forEach(clearInterval);
-            scheduleIntervals = [];
-        }
+        function updateNextTimbre() {
+            let now = new Date();
+            nextTimbreTime = null;
 
-        function startCountdown() {
-            updateCountdown();
-            timerId = setInterval(updateCountdown, 1000);
-        }
+            scheduleIntervals.forEach(intervalId => {
+                let [hours, minutes] = intervalId.split(':').map(Number);
+                let timbreTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
 
-        function updateCountdown() {
+                if (timbreTime > now) {
+                    if (!nextTimbreTime || timbreTime < nextTimbreTime) {
+                        nextTimbreTime = timbreTime;
+                    }
+                }
+            });
+
             if (nextTimbreTime) {
-                let now = new Date();
-                let timeDiff = Math.max(0, nextTimbreTime - now);
-                let hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                let minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-                let seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
-                document.getElementById('next-timbre').innerText = `Siguiente en: ${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                startCountdown();
             } else {
                 document.getElementById('next-timbre').innerText = "Siguiente en: --:--";
             }
         }
 
-        setInterval(() => {
-            const now = new Date();
-            document.getElementById('digital-clock').innerText = now.toLocaleTimeString();
-        }, 1000);
+        function startCountdown() {
+            clearTimeout(timerId);
 
+            function updateCountdown() {
+                let now = new Date();
+                let diff = nextTimbreTime - now;
+
+                if (diff <= 0) {
+                    playTimbre();
+                } else {
+                    let minutes = Math.floor(diff / 1000 / 60);
+                    let seconds = Math.floor((diff / 1000) % 60);
+                    document.getElementById('next-timbre').innerText = `Siguiente en: ${minutes}m ${seconds}s`;
+                    timerId = setTimeout(updateCountdown, 1000);
+                }
+            }
+
+            updateCountdown();
+        }
+
+        function clearIntervals() {
+            clearTimeout(timerId);
+            document.getElementById('next-timbre').innerText = "Siguiente en: --:--";
+        }
+
+        setInterval(updateClock, 1000);
+
+        function updateClock() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('digital-clock').textContent = `${hours}:${minutes}`;
+        }
     </script>
 
 </body>
