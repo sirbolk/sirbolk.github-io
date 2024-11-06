@@ -198,7 +198,7 @@
             }
         }
 
-        function setHorario1() { updateTimetable(['6:15', '7:00', '7:45', '9:15', '10:00', '11:15']); }
+        function setHorario1() { updateTimetable(['6:15', '7:00', '7:45', '9:15', '10:00', '11:15' ]); }
         function setHorario2() { updateTimetable(['6:15', '7:00', '7:45', '8:00', '9:00', '9:45', '10:30', '11:45']); }
         function setHorario3() { updateTimetable(['6:15', '7:15', '9:30', '10:00', '11:00', '12:15']); }
         function setHorario4() { updateTimetable(['6:15', '8:30', '9:00', '10:15', '11:15', '12:15','13:09']); }
@@ -206,83 +206,75 @@
         function updateTimetable(times) {
             let timeList = document.getElementById('time-list');
             timeList.innerHTML = '';
-            let now = new Date();
-            let foundFuture = false;
-
+            scheduleIntervals = times;
             times.forEach(time => {
-                let [hours, minutes] = time.split(':').map(Number);
-                let timbreTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
-
-                if (timbreTime > now && !foundFuture) {
-                    nextTimbreTime = timbreTime;
-                    foundFuture = true;
-                } else if (timbreTime <= now) {
-                    timbreTime.setDate(timbreTime.getDate() + 1); // Programar para el siguiente día si ya pasó
-                }
-
-                let listItem = document.createElement('p');
-                listItem.innerText = time;
-                timeList.appendChild(listItem);
-
-                scheduleIntervals.push(setInterval(() => {
-                    if (new Date() >= timbreTime) {
-                        playTimbre();
-                        timbreTime.setDate(timbreTime.getDate() + 1); // Reprogramar para el siguiente día
-                    }
-                }, 1000));
+                let p = document.createElement('p');
+                p.textContent = time;
+                timeList.appendChild(p);
             });
-
-            if (!foundFuture) {
-                nextTimbreTime = null; // Si no se encuentra un próximo timbre
-            }
-            startCountdown();
+            updateNextTimbre();
         }
 
         function playTimbre() {
             document.getElementById('timbre-sound').play();
-            
+            updateNextTimbre(); // Modificación: recalcular el siguiente timbre después de sonar
         }
 
-        function clearIntervals() {
-            scheduleIntervals.forEach(clearInterval);
-            scheduleIntervals = [];
-        }
+        function updateNextTimbre() {
+            let now = new Date();
+            nextTimbreTime = null;
 
-        function startCountdown() {
-            updateCountdown();
-            timerId = setInterval(updateCountdown, 1000);
-        }
+            scheduleIntervals.forEach(intervalId => {
+                let [hours, minutes] = intervalId.split(':').map(Number);
+                let timbreTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
 
-        function updateCountdown() {
+                if (timbreTime > now) {
+                    if (!nextTimbreTime || timbreTime < nextTimbreTime) {
+                        nextTimbreTime = timbreTime;
+                    }
+                }
+            });
+
             if (nextTimbreTime) {
-                let now = new Date();
-                let timeDiff = Math.max(0, nextTimbreTime - now);
-                let hours = Math.floor((timeDiff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                let minutes = Math.floor((timeDiff % (1000 * 60 * 60)) / (1000 * 60));
-                let seconds = Math.floor((timeDiff % (1000 * 60)) / 1000);
-                document.getElementById('next-timbre').innerText = `Siguiente en: ${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                startCountdown();
             } else {
                 document.getElementById('next-timbre').innerText = "Siguiente en: --:--";
             }
         }
 
-        function updateNextTimbre() {
-            let now = new Date();
-            if (scheduleIntervals.length > 0) {
-                let nextTimes = scheduleIntervals.map(interval => new Date(interval)).filter(t => t > now);
-                if (nextTimes.length > 0) {
-                    nextTimbreTime = new Date(Math.min(...nextTimes));
+        function startCountdown() {
+            clearTimeout(timerId);
+
+            function updateCountdown() {
+                let now = new Date();
+                let diff = nextTimbreTime - now;
+
+                if (diff <= 0) {
+                    playTimbre();
                 } else {
-                    nextTimbreTime = null;
+                    let minutes = Math.floor(diff / 1000 / 60);
+                    let seconds = Math.floor((diff / 1000) % 60);
+                    document.getElementById('next-timbre').innerText = `Siguiente en: ${minutes}m ${seconds}s`;
+                    timerId = setTimeout(updateCountdown, 1000);
                 }
             }
-            startCountdown();
+
+            updateCountdown();
         }
 
-        setInterval(() => {
-            let now = new Date();
-            document.getElementById('digital-clock').innerText = now.toLocaleTimeString();
-        }, 1000);
+        function clearIntervals() {
+            clearTimeout(timerId);
+            document.getElementById('next-timbre').innerText = "Siguiente en: --:--";
+        }
+
+        setInterval(updateClock, 1000);
+
+        function updateClock() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            document.getElementById('digital-clock').textContent = `${hours}:${minutes}`;
+        }
 
     </script>
 </body>
